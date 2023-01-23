@@ -280,13 +280,63 @@ void SoftwareRendererImp::rasterize_point( float x, float y, Color color ) {
 void SoftwareRendererImp::rasterize_line( float x0, float y0,
                                           float x1, float y1,
                                           Color color) {
-
   // Task 0: 
   // Implement Bresenham's algorithm (delete the line below and implement your own)
   ref->rasterize_line_helper(x0, y0, x1, y1, width, height, color, this);
 
-  // Advanced Task
-  // Drawing Smooth Lines with Line Width
+  // STUDENT IMPLEMENTATION
+
+  // // Determine vertical rasterization
+  // if (x0 == x1) {
+  //   // Fill vertical line from top to bottom (start at higher spot)
+  //   float start_y = (y0 <= y1) ? y0: y1;
+  //   float end_y = (y0 <= y1) ? y1: y0;
+  //   for (float y = start_y; y <= end_y; y++) {
+  //     rasterize_point(x0, y, color);
+  //   }
+  //   return;
+  // }
+
+  // // For all other lines, rasterize from left to right
+  // float start_x = (x0 < x1) ? x0 : x1;
+  // float end_x = (x0 < x1) ? x1 : x0;
+  // float start_y = (start_x == x0) ? y0 : y1;
+  // float end_y = (start_x == x0) ? y1 : y0;
+
+  // float curr_y = start_y;
+
+  // float slope = (end_y - start_y) / (end_x - start_x);
+
+  // if (abs(slope) <= 1) {
+  //   /*
+  //     Simple Case:
+  //     Iterate through each x-coordinate point in line
+  //   */
+  //   for (float x = start_x; x <= end_x; x++) {
+  //     rasterize_point(x, curr_y, color);
+  //     float orig_y = curr_y;
+  //     curr_y += slope;
+  //   }
+  // } else {
+  //   // y-changes by more than 1 pixel
+  //   for (float x = start_x; x < end_x; x++) {
+  //     rasterize_point(x, curr_y, color);
+  //     float orig_y = curr_y;
+  //     curr_y += slope;
+  //     /* curr_y should not overflow beyond point boundaries*/
+  //     if (x + 1 == end_x && abs(end_y - curr_y) > 0) {
+  //       curr_y = end_y;
+  //     }
+  //     float l_start = (orig_y < curr_y) ? orig_y : curr_y;
+  //     float l_end = (orig_y < curr_y) ? curr_y : orig_y;
+
+  //     for (float y = l_start; y <= l_end; y++) {
+  //       rasterize_point(x + 1, y, color);
+  //     }
+  //   }
+  //}
+
+  // TODO: Advanced Task, Drawing Smooth Lines with Line Width
 }
 
 void SoftwareRendererImp::rasterize_triangle( float x0, float y0,
@@ -295,6 +345,44 @@ void SoftwareRendererImp::rasterize_triangle( float x0, float y0,
                                               Color color ) {
   // Task 1: 
   // Implement triangle rasterization
+  // Determine box edges to iterate through
+  float start_x = min({x0, x1, x2});
+  float start_y = min({y0, y1, y2});
+  float end_x = max({x0, x1, x2});
+  float end_y = max({y0, y1, y2});
+
+  // Set up legs connecting all of the edges
+  Vector2D leg0(x1 - x0, y1 - y0);
+  Vector2D leg1(x2 - x1, y2 - y1);
+  Vector2D leg2(x0 - x2, y0 - y2);
+
+  // Find normals that point outwards from each edge
+  Vector2D legN0(leg0.y, -leg0.x);
+  Vector2D legN1(leg1.y, -leg1.x);
+  Vector2D legN2(leg2.y, -leg2.x);
+
+  // Iterate through all points in designated area
+  for (float y = start_y; y <= end_y; y++) {
+    for (float x = start_x; x <= end_x; x++) {
+      // Find middle of the pixel to work from there
+      y = floor(y) + 0.5;
+      x = floor(x) + 0.5;
+
+      // Find vectors from start of each edge towards the point
+      Vector2D pt_vec0 = Vector2D(x - x0, y - y0);
+      Vector2D pt_vec1 = Vector2D(x - x1, y - y1);
+      Vector2D pt_vec2 = Vector2D(x - x2, y - y2);
+      
+      // Check if point is inside triangle
+      // Convention: CCW, Inside when dot between N and inside edge is <= 0
+      if (dot(pt_vec0, legN0) <= 0 && 
+          dot(pt_vec1, legN1) <= 0 && 
+          dot(pt_vec2, legN2) <= 0) {
+            rasterize_point(x, y, color);
+      }
+    }
+  }
+  
 
   // Advanced Task
   // Implementing Triangle Edge Rules
