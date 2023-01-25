@@ -98,6 +98,10 @@ void SoftwareRendererImp::draw_element( SVGElement* element ) {
 	// Task 3 (part 1):
 	// Modify this to implement the transformation stack
 
+  Matrix3x3 original = transformation;
+  Matrix3x3 result = original * element->transform;
+  transformation = result;
+
 	switch (element->type) {
 	case POINT:
 		draw_point(static_cast<Point&>(*element));
@@ -127,6 +131,7 @@ void SoftwareRendererImp::draw_element( SVGElement* element ) {
 		break;
 	}
 
+  transformation = original;
 }
 
 
@@ -399,34 +404,69 @@ void SoftwareRendererImp::rasterize_triangle( float x0, float y0,
   Vector2D leg1(x2 - x1, y2 - y1);
   Vector2D leg2(x0 - x2, y0 - y2);
 
-  // Find normals that point outwards from each edge
-  Vector2D legN0(leg0.y, -leg0.x);
-  Vector2D legN1(leg1.y, -leg1.x);
-  Vector2D legN2(leg2.y, -leg2.x);
+  // Vectors for checking direction of arrows (clockwise or counter-clockwise)
+  Vector2D source1(x1 - x0, y1 - y0);
+  Vector2D source2(x2 - x0, y2 - y0);
 
-  // Iterate through all points in designated area
-  for (float y = start_y; y <= end_y; y++) {
-    for (float x = start_x; x <= end_x; x++) {
-      // Find middle of the pixel to work from there
-      y = floor(y) + 0.5;
-      x = floor(x) + 0.5;
+  // Triangle points are passed in counter-clockwise
+  if (cross(source1, source2) > 0) {
+    // Find normals that point outwards from each edge
+    Vector2D legN0(leg0.y, -leg0.x);
+    Vector2D legN1(leg1.y, -leg1.x);
+    Vector2D legN2(leg2.y, -leg2.x);
 
-      // Find vectors from start of each edge towards the point
-      Vector2D pt_vec0 = Vector2D(x - x0, y - y0);
-      Vector2D pt_vec1 = Vector2D(x - x1, y - y1);
-      Vector2D pt_vec2 = Vector2D(x - x2, y - y2);
-      
-      // Check if point is inside triangle
-      // Convention: CCW, Inside when dot between N and inside edge is <= 0
-      if (dot(pt_vec0, legN0) <= 0 && 
-          dot(pt_vec1, legN1) <= 0 && 
-          dot(pt_vec2, legN2) <= 0) {
-            rasterize_point(x, y, color);
+    // Iterate through all points in designated area
+    for (float y = start_y; y <= end_y; y++) {
+      for (float x = start_x; x <= end_x; x++) {
+        // Find middle of the pixel to work from there
+        y = floor(y) + 0.5;
+        x = floor(x) + 0.5;
+
+        // Find vectors from start of each edge towards the point
+        Vector2D pt_vec0 = Vector2D(x - x0, y - y0);
+        Vector2D pt_vec1 = Vector2D(x - x1, y - y1);
+        Vector2D pt_vec2 = Vector2D(x - x2, y - y2);
+        
+        // Check if point is inside triangle
+        // Convention: CCW, Inside when dot between N and inside edge is <= 0
+        if (dot(pt_vec0, legN0) <= 0 && 
+            dot(pt_vec1, legN1) <= 0 && 
+            dot(pt_vec2, legN2) <= 0) {
+              rasterize_point(x, y, color);
+        }
+      }
+    }
+  } 
+  // Triangles points are passed in clockwise
+  else {
+    // Find normals that point inwards from each edge
+    Vector2D legN0(-leg0.y, leg0.x);
+    Vector2D legN1(-leg1.y, leg1.x);
+    Vector2D legN2(-leg2.y, leg2.x);
+
+    // Iterate through all points in designated area
+    for (float y = start_y; y <= end_y; y++) {
+      for (float x = start_x; x <= end_x; x++) {
+        // Find middle of the pixel to work from there
+        y = floor(y) + 0.5;
+        x = floor(x) + 0.5;
+
+        // Find vectors from start of each edge towards the point
+        Vector2D pt_vec0 = Vector2D(x - x0, y - y0);
+        Vector2D pt_vec1 = Vector2D(x - x1, y - y1);
+        Vector2D pt_vec2 = Vector2D(x - x2, y - y2);
+        
+        // Check if point is inside triangle
+        // Convention: CW, Inside when dot between N and inside edge is <= 0
+        if (dot(pt_vec0, legN0) <= 0 && 
+            dot(pt_vec1, legN1) <= 0 && 
+            dot(pt_vec2, legN2) <= 0) {
+              rasterize_point(x, y, color);
+        }
       }
     }
   }
   
-
   // Advanced Task
   // Implementing Triangle Edge Rules
 
