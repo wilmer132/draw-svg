@@ -82,7 +82,9 @@ class SoftwareRenderer : public SVGRenderer {
 class SoftwareRendererImp : public SoftwareRenderer {
 public:
 
-	SoftwareRendererImp(SoftwareRendererRef *ref = NULL) : SoftwareRenderer(), ref(ref) { }
+	SoftwareRendererImp(SoftwareRendererRef *ref = NULL) : SoftwareRenderer(), ref(ref) {
+    sample_buffer = NULL;
+  }
 
 	// draw an svg input to pixel buffer
 	void draw_svg(SVG& svg);
@@ -94,10 +96,12 @@ public:
 	void set_pixel_buffer(unsigned char* pixel_buffer,
 		size_t width, size_t height);
 
-	void fill_sample(int sx, int sy, const Color& color);
+	void fill_sample(int sx, int sy, int sb, const Color& color);
 	void fill_pixel(int x, int y, const Color& color);
 
 private:
+  // Sample buffer for supersampling
+  unsigned char* sample_buffer;
 
 	// Primitive Drawing //
 

@@ -15,36 +15,44 @@ namespace CS248 {
 // Implements SoftwareRenderer //
 
 // fill a sample location with color
-void SoftwareRendererImp::fill_sample(int sx, int sy, const Color &color) {
+void SoftwareRendererImp::fill_sample(int sx, int sy, int sb, const Color &color) {
   // Task 2: implement this function
+
+	// check bounds
+	if (sx < 0 || sx >= width) return;
+	if (sy < 0 || sy >= height) return;
+
+	Color pixel_color;
+	float inv255 = 1.0 / 255.0;
+	pixel_color.r = sample_buffer[4 * (sx + sy * width) + (4 * width * height * sb)] * inv255;
+	pixel_color.g = sample_buffer[4 * (sx + sy * width) + (4 * width * height * sb) + 1] * inv255;
+	pixel_color.b = sample_buffer[4 * (sx + sy * width) + (4 * width * height * sb) + 2] * inv255;
+	pixel_color.a = sample_buffer[4 * (sx + sy * width) + (4 * width * height * sb) + 3] * inv255;
+
+	pixel_color = ref->alpha_blending_helper(pixel_color, color);
+
+	sample_buffer[4 * (sx + sy * width) + (4 * width * height * sb)] = (uint8_t)(pixel_color.r * 255);
+	sample_buffer[4 * (sx + sy * width) + (4 * width * height * sb) + 1] = (uint8_t)(pixel_color.g * 255);
+	sample_buffer[4 * (sx + sy * width) + (4 * width * height * sb) + 2] = (uint8_t)(pixel_color.b * 255);
+	sample_buffer[4 * (sx + sy * width) + (4 * width * height * sb) + 3] = (uint8_t)(pixel_color.a * 255);
 }
 
 // fill samples in the entire pixel specified by pixel coordinates
 void SoftwareRendererImp::fill_pixel(int x, int y, const Color &color) {
-
-	// Task 2: Re-implement this function
-
-	// check bounds
+ 	// check bounds
 	if (x < 0 || x >= width) return;
-	if (y < 0 || y >= height) return;
+  if (y < 0 || y >= height) return;
 
-	Color pixel_color;
-	float inv255 = 1.0 / 255.0;
-	pixel_color.r = pixel_buffer[4 * (x + y * width)] * inv255;
-	pixel_color.g = pixel_buffer[4 * (x + y * width) + 1] * inv255;
-	pixel_color.b = pixel_buffer[4 * (x + y * width) + 2] * inv255;
-	pixel_color.a = pixel_buffer[4 * (x + y * width) + 3] * inv255;
-
-	pixel_color = ref->alpha_blending_helper(pixel_color, color);
-
-	pixel_buffer[4 * (x + y * width)] = (uint8_t)(pixel_color.r * 255);
-	pixel_buffer[4 * (x + y * width) + 1] = (uint8_t)(pixel_color.g * 255);
-	pixel_buffer[4 * (x + y * width) + 2] = (uint8_t)(pixel_color.b * 255);
-	pixel_buffer[4 * (x + y * width) + 3] = (uint8_t)(pixel_color.a * 255);
-
+  for (int db = 0; db < sample_rate * sample_rate; db++) {
+    fill_sample(x, y, db, color);
+  }
 }
 
 void SoftwareRendererImp::draw_svg( SVG& svg ) {
+
+  // clear sample_buffer before drawing
+  memset(this->sample_buffer, 255, 
+    4 * width * height * sample_rate * sample_rate);
 
   // set top level transformation
   transformation = canvas_to_screen;
@@ -78,8 +86,21 @@ void SoftwareRendererImp::set_sample_rate( size_t sample_rate ) {
 
   // Task 2: 
   // You may want to modify this for supersampling support
-  this->sample_rate = sample_rate;
 
+  // if sample rate equal, no need to reset
+  if (this->sample_rate == sample_rate) return;
+
+  // otherwise, free current sample_buffer
+  delete[] this->sample_buffer;
+
+  // set up new sample_buffer
+  this->sample_buffer = new unsigned char[4 * width * height *
+    sample_rate * sample_rate];
+  // set all values to 255 (i.e. white rbg color)
+  memset(this->sample_buffer, 255,
+    4 * width * height * sample_rate * sample_rate);
+
+  this->sample_rate = sample_rate;
 }
 
 void SoftwareRendererImp::set_pixel_buffer( unsigned char* pixel_buffer,
@@ -88,6 +109,17 @@ void SoftwareRendererImp::set_pixel_buffer( unsigned char* pixel_buffer,
   // Task 2: 
   // You may want to modify this for supersampling support
   this->pixel_buffer = pixel_buffer;
+  // if sample_buffer not NULL (not first run) free previous sample_buffer
+  if (this->sample_buffer) {
+    delete[] this->sample_buffer;
+  }
+  // set up new sample_buffer
+  this->sample_buffer = new unsigned char[4 * width * height *
+    this->sample_rate * this->sample_rate];
+  // set all values to 255 (i.e. white rbg color)
+  memset(this->sample_buffer, 255,
+    4 * width * height * this->sample_rate * this->sample_rate);
+  
   this->width = width;
   this->height = height;
 
@@ -268,13 +300,7 @@ void SoftwareRendererImp::rasterize_point( float x, float y, Color color ) {
   if (sx < 0 || sx >= width) return;
   if (sy < 0 || sy >= height) return;
 
-  // fill sample - NOT doing alpha blending!
-  // TODO: Call fill_pixel here to run alpha blending
-  pixel_buffer[4 * (sx + sy * width)] = (uint8_t)(color.r * 255);
-  pixel_buffer[4 * (sx + sy * width) + 1] = (uint8_t)(color.g * 255);
-  pixel_buffer[4 * (sx + sy * width) + 2] = (uint8_t)(color.b * 255);
-  pixel_buffer[4 * (sx + sy * width) + 3] = (uint8_t)(color.a * 255);
-
+  fill_pixel(sx, sy, color);
 }
 
 void SoftwareRendererImp::rasterize_line( float x0, float y0,
@@ -446,6 +472,36 @@ void SoftwareRendererImp::resolve( void ) {
   // Task 2: 
   // Implement supersampling
   // You may also need to modify other functions marked with "Task 2".
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      int sample_r_sum = 0;
+      int sample_g_sum = 0;
+      int sample_b_sum = 0;
+      int sample_a_sum = 0;
+      for (int b = 0; b < sample_rate * sample_rate; b++) {
+        uint8_t s_r = sample_buffer[4 * (x + (y * width)) + (4 * width * height * b)];
+        uint8_t s_g = sample_buffer[4 * (x + (y * width)) + (4 * width * height * b) + 1];
+        uint8_t s_b = sample_buffer[4 * (x + (y * width)) + (4 * width * height * b) + 2];
+        uint8_t s_a = sample_buffer[4 * (x + (y * width)) + (4 * width * height * b) + 3];
+
+        sample_r_sum += s_r;
+        sample_g_sum += s_g;
+        sample_b_sum += s_b;
+        sample_a_sum += s_a;
+      }
+      uint8_t avg_r = (uint8_t)(sample_r_sum / (sample_rate * sample_rate));
+      uint8_t avg_g = (uint8_t)(sample_g_sum / (sample_rate * sample_rate));
+      uint8_t avg_b = (uint8_t)(sample_b_sum / (sample_rate * sample_rate));
+      uint8_t avg_a = (uint8_t)(sample_a_sum / (sample_rate * sample_rate));
+
+      // Add average of rbga sums to pixel_buffer
+      pixel_buffer[4 * (x + y * width)] = avg_r;
+      pixel_buffer[4 * (x + y * width) + 1] = avg_g;
+      pixel_buffer[4 * (x + y * width) + 2] = avg_b;
+      pixel_buffer[4 * (x + y * width) + 3] = avg_a;
+    }
+  }
   return;
 
 }
