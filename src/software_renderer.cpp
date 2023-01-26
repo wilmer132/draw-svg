@@ -444,22 +444,44 @@ void SoftwareRendererImp::rasterize_triangle( float x0, float y0,
     // Iterate through all points in designated area
     for (float y = start_y; y <= end_y; y++) {
       for (float x = start_x; x <= end_x; x++) {
-        // Find middle of the pixel to work from there
-        y = floor(y) + 0.5;
-        x = floor(x) + 0.5;
+        // retrieve values inside of loc(x, y)
+        float const db = 1 / sample_rate;
+        float const offset = sample_rate / 2;
+        for (float by = 0; by < sample_rate; by++) {
+          for (float bx = 0; bx < sample_rate; bx++) {
+            float x_adj = floor(x) + db * bx + offset;
+            float y_adj = floor(y) + db * by + offset;
 
-        // Find vectors from start of each edge towards the point
-        Vector2D pt_vec0 = Vector2D(x - x0, y - y0);
-        Vector2D pt_vec1 = Vector2D(x - x1, y - y1);
-        Vector2D pt_vec2 = Vector2D(x - x2, y - y2);
-        
-        // Check if point is inside triangle
-        // Convention: CCW, Inside when dot between N and inside edge is <= 0
-        if (dot(pt_vec0, legN0) <= 0 && 
-            dot(pt_vec1, legN1) <= 0 && 
-            dot(pt_vec2, legN2) <= 0) {
-              rasterize_point(x, y, color);
+            // Find vectors from start of each edge towards the point
+            Vector2D pt_vec0 = Vector2D(x_adj - x0, y_adj - y0);
+            Vector2D pt_vec1 = Vector2D(x_adj - x1, y_adj - y1);
+            Vector2D pt_vec2 = Vector2D(x_adj - x2, y_adj - y2);
+            
+            // Check if point is inside triangle
+            // Convention: CCW, Inside when dot between N and inside edge is <= 0
+            if (dot(pt_vec0, legN0) <= 0 && 
+                dot(pt_vec1, legN1) <= 0 && 
+                dot(pt_vec2, legN2) <= 0) {
+              fill_sample((int)floor(x_adj), (int)floor(y_adj), bx + by, color);
+            }
+          }
         }
+        // // Find middle of the pixel to work from there
+        // y = floor(y) + 0.5;
+        // x = floor(x) + 0.5;
+
+        // // Find vectors from start of each edge towards the point
+        // Vector2D pt_vec0 = Vector2D(x - x0, y - y0);
+        // Vector2D pt_vec1 = Vector2D(x - x1, y - y1);
+        // Vector2D pt_vec2 = Vector2D(x - x2, y - y2);
+        
+        // // Check if point is inside triangle
+        // // Convention: CCW, Inside when dot between N and inside edge is <= 0
+        // if (dot(pt_vec0, legN0) <= 0 && 
+        //     dot(pt_vec1, legN1) <= 0 && 
+        //     dot(pt_vec2, legN2) <= 0) {
+        //       rasterize_point(x, y, color);
+        // }
       }
     }
   } 
@@ -470,24 +492,51 @@ void SoftwareRendererImp::rasterize_triangle( float x0, float y0,
     Vector2D legN1(-leg1.y, leg1.x);
     Vector2D legN2(-leg2.y, leg2.x);
 
+    // // Iterate through all points in designated area
+    // for (float y = start_y; y <= end_y; y++) {
+    //   for (float x = start_x; x <= end_x; x++) {
+    //     // Find middle of the pixel to work from there
+    //     y = floor(y) + 0.5;
+    //     x = floor(x) + 0.5;
+
+    //     // Find vectors from start of each edge towards the point
+    //     Vector2D pt_vec0 = Vector2D(x - x0, y - y0);
+    //     Vector2D pt_vec1 = Vector2D(x - x1, y - y1);
+    //     Vector2D pt_vec2 = Vector2D(x - x2, y - y2);
+        
+    //     // Check if point is inside triangle
+    //     // Convention: CW, Inside when dot between N and inside edge is <= 0
+    //     if (dot(pt_vec0, legN0) <= 0 && 
+    //         dot(pt_vec1, legN1) <= 0 && 
+    //         dot(pt_vec2, legN2) <= 0) {
+    //           rasterize_point(x, y, color);
+    //     }
+    //   }
+    // }
     // Iterate through all points in designated area
     for (float y = start_y; y <= end_y; y++) {
       for (float x = start_x; x <= end_x; x++) {
-        // Find middle of the pixel to work from there
-        y = floor(y) + 0.5;
-        x = floor(x) + 0.5;
+        // retrieve values inside of loc(x, y)
+        float const db = 1 / sample_rate;
+        float const offset = sample_rate / 2;
+        for (float by = 0; by < sample_rate; by++) {
+          for (float bx = 0; bx < sample_rate; bx++) {
+            float x_adj = floor(x) + db * bx + offset;
+            float y_adj = floor(y) + db * by + offset;
 
-        // Find vectors from start of each edge towards the point
-        Vector2D pt_vec0 = Vector2D(x - x0, y - y0);
-        Vector2D pt_vec1 = Vector2D(x - x1, y - y1);
-        Vector2D pt_vec2 = Vector2D(x - x2, y - y2);
-        
-        // Check if point is inside triangle
-        // Convention: CW, Inside when dot between N and inside edge is <= 0
-        if (dot(pt_vec0, legN0) <= 0 && 
-            dot(pt_vec1, legN1) <= 0 && 
-            dot(pt_vec2, legN2) <= 0) {
-              rasterize_point(x, y, color);
+            // Find vectors from start of each edge towards the point
+            Vector2D pt_vec0 = Vector2D(x_adj - x0, y_adj - y0);
+            Vector2D pt_vec1 = Vector2D(x_adj - x1, y_adj - y1);
+            Vector2D pt_vec2 = Vector2D(x_adj - x2, y_adj - y2);
+
+            // Check if point is inside triangle
+            // Convention: CCW, Inside when dot between N and inside edge is <= 0
+            if (dot(pt_vec0, legN0) <= 0 && 
+                dot(pt_vec1, legN1) <= 0 && 
+                dot(pt_vec2, legN2) <= 0) {
+              fill_sample((int)floor(x_adj), (int)floor(y_adj), bx + by, color);
+            }
+          }
         }
       }
     }
