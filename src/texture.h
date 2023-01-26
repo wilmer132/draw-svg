@@ -31,7 +31,7 @@ class Sampler2D {
 
   Sampler2D( SampleMethod method ) : method ( method ) { }
 
-  ~Sampler2D();
+  ~Sampler2D() {};
 
   virtual void generate_mips( Texture& tex, int startLevel ) = 0;
 
@@ -61,6 +61,8 @@ class Sampler2DImp : public Sampler2D {
  public:
 
   Sampler2DImp( SampleMethod method = TRILINEAR ) : Sampler2D ( method ) { }
+
+  ~Sampler2DImp() { };
   
   void generate_mips( Texture& tex, int startLevel );
 
