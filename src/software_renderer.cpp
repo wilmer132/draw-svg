@@ -514,9 +514,6 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
         }
       }
     }
-
-      // Need double for loop that loops over all samples
-      // Use fill sample on this loop
   }
 }
 
