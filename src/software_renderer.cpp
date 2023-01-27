@@ -35,11 +35,7 @@ void SoftwareRendererImp::fill_sample(int sx, int sy, int sb, const Color &color
 	pixel_color.b = sample_buffer[sample_b_i] * inv255;
 	pixel_color.a = sample_buffer[sample_a_i] * inv255;
 
-	Color pixel_color_test = ref->alpha_blending_helper(pixel_color, color);
   pixel_color = alpha_blending(pixel_color, color);
-  //cout  << pixel_color << " " << pixel_color_test << endl;
-  //cout  << (pixel_color == pixel_color_test) << endl;
-
 
 	sample_buffer[sample_r_i] = (uint8_t)(pixel_color.r * 255);
 	sample_buffer[sample_g_i] = (uint8_t)(pixel_color.g * 255);
@@ -565,8 +561,6 @@ Color SoftwareRendererImp::alpha_blending(Color pixel_color, Color color)
 {
   // Task 5
   // Implement alpha compositing
-  // pixel_color = element color
-  // color = canvas color
   float element_alpha = color.a;
   float element_red = color.r * element_alpha;
   float element_green = color.g * element_alpha;
