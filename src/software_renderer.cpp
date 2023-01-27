@@ -493,26 +493,30 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
   // Implement image rasterization
   //CS248::Sampler2DImp sampler(NEAREST);
   CS248::Sampler2DImp sampler(BILINEAR);
-  sampler.generate_mips(tex, 0);
+  //sampler.generate_mips(tex, 0);
 
   // Loop over all pixels in the valid range
-  // Make sure to account for rounding, split stuff up as needed
+  // Make sure to account for rounding, split pixels up as needed
   // Select the appropriate approximated texture
-    // First use sample nearest
-    // Second use bilinear
+  float const db = 1 / sample_rate;
+  float const offset = sample_rate / 2;
   for (float y = y0; y < y1; y++) {
     for (float x = x0; x < x1; x++) {
-      // Normalize current point   
-      float u = (x + 0.5 - x0) / (x1 - x0);
-      float v = (y + 0.5 - y0) / (y1 - y0);
-      //Color color = sampler.sample_nearest(tex, u, v);
-      Color color = sampler.sample_bilinear(tex, u, v);
-      //fill_sample(floor(x), floor(y, )
-      rasterize_point(x, y, color);
+      // retrieve values inside of loc(x, y)
+      for (float by = 0; by < sample_rate; by++) {
+        for (float bx = 0; bx < sample_rate; bx++) {
+          float x_adj = floor(x) + db * bx + offset;
+          float y_adj = floor(y) + db * by + offset;
+          float u = (x_adj - x0) / (x1 - x0);
+          float v = (y_adj - y0) / (y1 - y0);
+          Color color = sampler.sample_bilinear(tex, u, v);
+          fill_sample((int)floor(x_adj), (int)floor(y_adj), bx + by * sample_rate, color);
+        }
+      }
+    }
 
       // Need double for loop that loops over all samples
       // Use fill sample on this loop
-    }
   }
 }
 

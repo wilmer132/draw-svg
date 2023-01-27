@@ -180,16 +180,6 @@ Color Sampler2DImp::sample_bilinear(Texture& tex,
 
   return Color(red, green, blue, a);
 
-  
-
-                
-
-
-
-
-
-
-
   // std::vector<float> x_vals = {pixel_left_top_x, pixel_x2, pixel_x3, pixel_x4};
   // std::vector<float> y_vals = {pixel_y1, pixel_y2, pixel_y3, pixel_y4};
 
