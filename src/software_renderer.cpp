@@ -22,19 +22,24 @@ void SoftwareRendererImp::fill_sample(int sx, int sy, int sb, const Color &color
 	if (sx < 0 || sx >= width) return;
 	if (sy < 0 || sy >= height) return;
 
+  int const sample_r_i = 4 * (sx + sy * width) + (4 * width * height * sb);
+  int const sample_g_i = 4 * (sx + sy * width) + (4 * width * height * sb) + 1;
+  int const sample_b_i = 4 * (sx + sy * width) + (4 * width * height * sb) + 2;
+  int const sample_a_i = 4 * (sx + sy * width) + (4 * width * height * sb) + 3;
+
 	Color pixel_color;
 	float inv255 = 1.0 / 255.0;
-	pixel_color.r = sample_buffer[4 * (sx + sy * width) + (4 * width * height * sb)] * inv255;
-	pixel_color.g = sample_buffer[4 * (sx + sy * width) + (4 * width * height * sb) + 1] * inv255;
-	pixel_color.b = sample_buffer[4 * (sx + sy * width) + (4 * width * height * sb) + 2] * inv255;
-	pixel_color.a = sample_buffer[4 * (sx + sy * width) + (4 * width * height * sb) + 3] * inv255;
+	pixel_color.r = sample_buffer[sample_r_i] * inv255;
+	pixel_color.g = sample_buffer[sample_g_i] * inv255;
+	pixel_color.b = sample_buffer[sample_b_i] * inv255;
+	pixel_color.a = sample_buffer[sample_a_i] * inv255;
 
 	pixel_color = ref->alpha_blending_helper(pixel_color, color);
 
-	sample_buffer[4 * (sx + sy * width) + (4 * width * height * sb)] = (uint8_t)(pixel_color.r * 255);
-	sample_buffer[4 * (sx + sy * width) + (4 * width * height * sb) + 1] = (uint8_t)(pixel_color.g * 255);
-	sample_buffer[4 * (sx + sy * width) + (4 * width * height * sb) + 2] = (uint8_t)(pixel_color.b * 255);
-	sample_buffer[4 * (sx + sy * width) + (4 * width * height * sb) + 3] = (uint8_t)(pixel_color.a * 255);
+	sample_buffer[sample_r_i] = (uint8_t)(pixel_color.r * 255);
+	sample_buffer[sample_g_i] = (uint8_t)(pixel_color.g * 255);
+	sample_buffer[sample_b_i] = (uint8_t)(pixel_color.b * 255);
+	sample_buffer[sample_a_i] = (uint8_t)(pixel_color.a * 255);
 }
 
 // fill samples in the entire pixel specified by pixel coordinates
@@ -434,60 +439,42 @@ void SoftwareRendererImp::rasterize_triangle( float x0, float y0,
   Vector2D source1(x1 - x0, y1 - y0);
   Vector2D source2(x2 - x0, y2 - y0);
 
+  // Find normals that point inwards from each edge
+  Vector2D legN0(-leg0.y, leg0.x);
+  Vector2D legN1(-leg1.y, leg1.x);
+  Vector2D legN2(-leg2.y, leg2.x);
+
   // Triangle points are passed in counter-clockwise
   if (cross(source1, source2) > 0) {
     // Find normals that point outwards from each edge
-    Vector2D legN0(leg0.y, -leg0.x);
-    Vector2D legN1(leg1.y, -leg1.x);
-    Vector2D legN2(leg2.y, -leg2.x);
+    legN0 = Vector2D(leg0.y, -leg0.x);
+    legN1 = Vector2D(leg1.y, -leg1.x);
+    legN2 = Vector2D(leg2.y, -leg2.x);
+  }
 
-    // Iterate through all points in designated area
-    for (float y = start_y; y <= end_y; y++) {
-      for (float x = start_x; x <= end_x; x++) {
-        // Find middle of the pixel to work from there
-        y = floor(y) + 0.5;
-        x = floor(x) + 0.5;
+  float const db = 1.0 / sample_rate;
+  float const offset = db / 2.0;
+  // Iterate through all points in designated area
+  for (float y = start_y; y <= end_y; y++) {
+    for (float x = start_x; x <= end_x; x++) {
+      // retrieve values inside of loc(x, y)
+      for (float by = 0; by < sample_rate; by++) {
+        for (float bx = 0; bx < sample_rate; bx++) {
+          float x_adj = floor(x) + db * bx + offset;
+          float y_adj = floor(y) + db * by + offset;
 
-        // Find vectors from start of each edge towards the point
-        Vector2D pt_vec0 = Vector2D(x - x0, y - y0);
-        Vector2D pt_vec1 = Vector2D(x - x1, y - y1);
-        Vector2D pt_vec2 = Vector2D(x - x2, y - y2);
-        
-        // Check if point is inside triangle
-        // Convention: CCW, Inside when dot between N and inside edge is <= 0
-        if (dot(pt_vec0, legN0) <= 0 && 
-            dot(pt_vec1, legN1) <= 0 && 
-            dot(pt_vec2, legN2) <= 0) {
-              rasterize_point(x, y, color);
-        }
-      }
-    }
-  } 
-  // Triangles points are passed in clockwise
-  else {
-    // Find normals that point inwards from each edge
-    Vector2D legN0(-leg0.y, leg0.x);
-    Vector2D legN1(-leg1.y, leg1.x);
-    Vector2D legN2(-leg2.y, leg2.x);
-
-    // Iterate through all points in designated area
-    for (float y = start_y; y <= end_y; y++) {
-      for (float x = start_x; x <= end_x; x++) {
-        // Find middle of the pixel to work from there
-        y = floor(y) + 0.5;
-        x = floor(x) + 0.5;
-
-        // Find vectors from start of each edge towards the point
-        Vector2D pt_vec0 = Vector2D(x - x0, y - y0);
-        Vector2D pt_vec1 = Vector2D(x - x1, y - y1);
-        Vector2D pt_vec2 = Vector2D(x - x2, y - y2);
-        
-        // Check if point is inside triangle
-        // Convention: CW, Inside when dot between N and inside edge is <= 0
-        if (dot(pt_vec0, legN0) <= 0 && 
-            dot(pt_vec1, legN1) <= 0 && 
-            dot(pt_vec2, legN2) <= 0) {
-              rasterize_point(x, y, color);
+          // Find vectors from start of each edge towards the point
+          Vector2D pt_vec0 = Vector2D(x_adj - x0, y_adj - y0);
+          Vector2D pt_vec1 = Vector2D(x_adj - x1, y_adj - y1);
+          Vector2D pt_vec2 = Vector2D(x_adj - x2, y_adj - y2);
+          
+          // Check if point is inside triangle
+          // Convention: CCW, Inside when dot between N and inside edge is <= 0
+          if (dot(pt_vec0, legN0) <= 0 && 
+              dot(pt_vec1, legN1) <= 0 && 
+              dot(pt_vec2, legN2) <= 0) {
+            fill_sample((int)floor(x), (int)floor(y), bx + by * sample_rate, color);
+          }
         }
       }
     }
@@ -520,15 +507,15 @@ void SoftwareRendererImp::resolve( void ) {
       int sample_b_sum = 0;
       int sample_a_sum = 0;
       for (int b = 0; b < sample_rate * sample_rate; b++) {
-        uint8_t s_r = sample_buffer[4 * (x + (y * width)) + (4 * width * height * b)];
-        uint8_t s_g = sample_buffer[4 * (x + (y * width)) + (4 * width * height * b) + 1];
-        uint8_t s_b = sample_buffer[4 * (x + (y * width)) + (4 * width * height * b) + 2];
-        uint8_t s_a = sample_buffer[4 * (x + (y * width)) + (4 * width * height * b) + 3];
+        int const sample_r_i = 4 * (x + y * width) + (4 * width * height * b);
+        int const sample_g_i = 4 * (x + y * width) + (4 * width * height * b) + 1;
+        int const sample_b_i = 4 * (x + y * width) + (4 * width * height * b) + 2;
+        int const sample_a_i = 4 * (x + y * width) + (4 * width * height * b) + 3;
 
-        sample_r_sum += s_r;
-        sample_g_sum += s_g;
-        sample_b_sum += s_b;
-        sample_a_sum += s_a;
+        sample_r_sum += sample_buffer[sample_r_i];
+        sample_g_sum += sample_buffer[sample_g_i];
+        sample_b_sum += sample_buffer[sample_b_i];
+        sample_a_sum += sample_buffer[sample_a_i];
       }
       uint8_t avg_r = (uint8_t)(sample_r_sum / (sample_rate * sample_rate));
       uint8_t avg_g = (uint8_t)(sample_g_sum / (sample_rate * sample_rate));
