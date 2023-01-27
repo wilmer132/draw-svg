@@ -491,24 +491,23 @@ void SoftwareRendererImp::rasterize_image( float x0, float y0,
                                            Texture& tex ) {
   // Task 4: 
   // Implement image rasterization
-  //CS248::Sampler2DImp sampler(NEAREST);
   CS248::Sampler2DImp sampler(BILINEAR);
-  //sampler.generate_mips(tex, 0);
 
+  // Values needed for accessing within each pixel
+  float const db = 1.0 / sample_rate;
+  float const offset = sample_rate / 2.0;
   // Loop over all pixels in the valid range
-  // Make sure to account for rounding, split pixels up as needed
-  // Select the appropriate approximated texture
-  float const db = 1 / sample_rate;
-  float const offset = sample_rate / 2;
   for (float y = y0; y < y1; y++) {
     for (float x = x0; x < x1; x++) {
       // retrieve values inside of loc(x, y)
       for (float by = 0; by < sample_rate; by++) {
         for (float bx = 0; bx < sample_rate; bx++) {
+          // Get sample's coordinatea and u, v vectors
           float x_adj = floor(x) + db * bx + offset;
           float y_adj = floor(y) + db * by + offset;
           float u = (x_adj - x0) / (x1 - x0);
           float v = (y_adj - y0) / (y1 - y0);
+          // Put sampled color from texture into our sample_buffer with appropriate color
           Color color = sampler.sample_bilinear(tex, u, v);
           fill_sample((int)floor(x_adj), (int)floor(y_adj), bx + by * sample_rate, color);
         }

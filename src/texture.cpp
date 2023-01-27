@@ -89,9 +89,11 @@ Color Sampler2DImp::sample_nearest(Texture& tex,
   size_t level_width = tex.mipmap[level].width;
   size_t level_height = tex.mipmap[level].height;
 
+  // Find adjusted vector for loc in texture map
   int u_near = u * level_width;
   int v_near = v * level_height;
   
+  // Access color values inside of map that correlate to nearest pixel
   uint8_t sample_r = tex.mipmap[level].texels[4 * (u_near + v_near * level_width)];
   uint8_t sample_g = tex.mipmap[level].texels[4 * (u_near + v_near * level_width) + 1];
   uint8_t sample_b = tex.mipmap[level].texels[4 * (u_near + v_near * level_width) + 2];
@@ -109,17 +111,22 @@ Color Sampler2DImp::sample_bilinear(Texture& tex,
   size_t level_width = tex.mipmap[level].width;
   size_t level_height = tex.mipmap[level].height;
 
+  // Find adjusted vector for loc in texture map
   float u_exact = u * level_width;
   float v_exact = v * level_height;
 
+  // These points will represent the four surrounding our exact point
   float pixel_left_top_x, pixel_left_top_y,
         pixel_left_bot_x, pixel_left_bot_y,
         pixel_right_top_x, pixel_right_top_y, 
         pixel_right_bot_x, pixel_right_bot_y;
 
+  // Truncate to find dividor between the pixels we care about
   int u_trunc = (int) u_exact;
   int v_trunc = (int) v_exact;
   
+  // Use difference to divide if we should grab pixels
+  // from left/right or up/down
   float u_offset = u_exact - u_trunc;
   float v_offset = v_exact - v_trunc;
 
@@ -148,6 +155,7 @@ Color Sampler2DImp::sample_bilinear(Texture& tex,
   }
 
   // Find first interpolation (between bottom two points in x)
+  // Values must be pulled from one-dimensional vector that contains all texture
   float left_mid_dist = u_exact - pixel_left_bot_x;
   float mid_right_dist = pixel_right_bot_x - u_exact;
   float bottom_interp_red = left_mid_dist * tex.mipmap[level].texels[4 * ((int)pixel_left_bot_x + (int)pixel_left_bot_y * level_width)]
@@ -160,6 +168,7 @@ Color Sampler2DImp::sample_bilinear(Texture& tex,
                           + mid_right_dist * tex.mipmap[level].texels[4 * ((int)pixel_right_bot_x + (int)pixel_right_bot_y * level_width) + 3];
 
   // Find second interpolation (between top two points in x)
+    // Values must be pulled from one-dimensional vector that contains all texture
   float top_interp_red = left_mid_dist * tex.mipmap[level].texels[4 * ((int)pixel_left_top_x + (int)pixel_left_top_y * level_width)]
                           + mid_right_dist * tex.mipmap[level].texels[4 * ((int)pixel_right_top_x + (int)pixel_right_top_y * level_width)];
   float top_interp_green = left_mid_dist * tex.mipmap[level].texels[4 * ((int)pixel_left_top_x + (int)pixel_left_top_y * level_width) + 1]
@@ -178,28 +187,8 @@ Color Sampler2DImp::sample_bilinear(Texture& tex,
   float blue = top_mid_dist * top_interp_blue + mid_bot_dist * bottom_interp_blue;
   float a = top_mid_dist * top_interp_a + mid_bot_dist * bottom_interp_a;
 
-  return Color(red, green, blue, a);
-
-  // std::vector<float> x_vals = {pixel_left_top_x, pixel_x2, pixel_x3, pixel_x4};
-  // std::vector<float> y_vals = {pixel_y1, pixel_y2, pixel_y3, pixel_y4};
-
-  // float sum_red, sum_green, sum_blue, sum_a = 0;
-
-  // for (int i = 0; i < x_vals.size(); i++) {
-  //   float curr_x = x_vals[i];
-  //   float curr_y = y_vals[i];
-
-  //   sum_red += tex.mipmap[level].texels[4 * ((int)curr_x + (int)curr_y * level_width)];
-  //   sum_green += tex.mipmap[level].texels[4 * ((int)curr_x + (int)curr_y * level_width) + 1];
-  //   sum_blue += tex.mipmap[level].texels[4 * ((int)curr_x + (int)curr_y * level_width) + 2];
-  //   sum_a += tex.mipmap[level].texels[4 * ((int)curr_x + (int)curr_y * level_width) + 3];
-  // }
-
-  // uint8_t avg_red = sum_red / 4;
-  // uint8_t avg_green = sum_green / 4;
-  // uint8_t avg_blue = sum_blue / 4;
-  // uint8_t avg_a = sum_a / 4;
-  // return Color(avg_red, avg_green, avg_blue, avg_a);
+  // Divide by 255 to place value within valid color range
+  return Color(red / 255, green / 255, blue / 255, a / 255);
 }
 
 Color Sampler2DImp::sample_trilinear(Texture& tex, 
